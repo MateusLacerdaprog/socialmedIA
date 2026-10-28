@@ -1,0 +1,602 @@
+{
+  "versao": 1,
+  "perfis": {
+    "empresas_locais": {
+      "label": "Empresa Local / Comércio Regional",
+      "editonny_style": "amber",
+      "palette": {
+        "card_bg": "#121318",
+        "text_primary": "#FFFFFF",
+        "accent_primary": "#FFDE00",
+        "accent_secondary": "#FF6B00",
+        "stamp_color": "green"
+      },
+      "typography": {
+        "hook_px": 90,
+        "pill_px": 58,
+        "caption_px": 88,
+        "stroke_px": 7,
+        "shadow_pct": 25,
+        "max_words_per_block": 3
+      },
+      "pacing": {
+        "max_first_word_delay_s": 0.4,
+        "min_cut_s": 0.65,
+        "target_median_cut_s": 1.75,
+        "max_static_shot_s": 3.8,
+        "jcut_lead_frames": 4,
+        "jcut_tail_trim_frames": 2
+      },
+      "zoom_plan": {
+        "base_scale": 1.08,
+        "price_or_number_zoom": {
+          "preset": "impacto",
+          "scale": 1.45,
+          "duration_s": 0.15
+        },
+        "argument_zoom": {
+          "preset": "destaque",
+          "scale": 1.25,
+          "duration_s": 0.7
+        }
+      },
+      "safe_zones": {
+        "hook_xy": [
+          540,
+          230
+        ],
+        "counter_xy": [
+          330,
+          1170
+        ],
+        "stamp_xy": [
+          230,
+          1150
+        ],
+        "caption_editonny_y": 1380
+      },
+      "cta_keyword_default": "LISTA",
+      "hashtags_default": [
+        "#comerciolocal",
+        "#prontaentrega",
+        "#ofertas",
+        "#atacadoevarejo",
+        "#negocioslocais"
+      ]
+    },
+    "varejo": {
+      "label": "Varejo / Supermercado / Atacadista",
+      "editonny_style": "amber",
+      "palette": {
+        "card_bg": "#121318",
+        "text_primary": "#FFFFFF",
+        "accent_primary": "#FFDE00",
+        "accent_secondary": "#FF6B00",
+        "stamp_color": "green"
+      },
+      "typography": {
+        "hook_px": 90,
+        "pill_px": 58,
+        "caption_px": 88,
+        "stroke_px": 7,
+        "shadow_pct": 35,
+        "max_words_per_block": 3
+      },
+      "pacing": {
+        "max_first_word_delay_s": 0.38,
+        "min_cut_s": 0.65,
+        "target_median_cut_s": 1.67,
+        "max_static_shot_s": 3.8,
+        "jcut_lead_frames": 4,
+        "jcut_tail_trim_frames": 2
+      },
+      "zoom_plan": {
+        "base_scale": 1.08,
+        "price_or_number_zoom": {
+          "preset": "impacto",
+          "scale": 1.45,
+          "duration_s": 0.15
+        },
+        "argument_zoom": {
+          "preset": "destaque",
+          "scale": 1.25,
+          "duration_s": 0.7
+        }
+      },
+      "safe_zones": {
+        "hook_xy": [
+          540,
+          250
+        ],
+        "counter_xy": [
+          330,
+          1170
+        ],
+        "stamp_xy": [
+          230,
+          1150
+        ],
+        "caption_editonny_y": 1400
+      },
+      "cta_keyword_default": "TABELA",
+      "hashtags_default": [
+        "#atacado",
+        "#varejo",
+        "#supermercado",
+        "#economia",
+        "#insumos"
+      ]
+    },
+    "material_construcao": {
+      "label": "Loja de Material de Construção / Home Center",
+      "editonny_style": "amber",
+      "palette": {
+        "card_bg": "#121318",
+        "text_primary": "#FFFFFF",
+        "accent_primary": "#FFDE00",
+        "accent_secondary": "#FF6B00",
+        "stamp_color": "green"
+      },
+      "typography": {
+        "hook_px": 94,
+        "pill_px": 58,
+        "caption_px": 88,
+        "stroke_px": 8,
+        "shadow_pct": 35,
+        "max_words_per_block": 3
+      },
+      "pacing": {
+        "max_first_word_delay_s": 0.35,
+        "min_cut_s": 0.75,
+        "target_median_cut_s": 1.75,
+        "max_static_shot_s": 3.8,
+        "jcut_lead_frames": 4,
+        "jcut_tail_trim_frames": 2
+      },
+      "zoom_plan": {
+        "base_scale": 1.08,
+        "price_or_number_zoom": {
+          "preset": "impacto",
+          "scale": 1.45,
+          "duration_s": 0.15
+        },
+        "argument_zoom": {
+          "preset": "destaque",
+          "scale": 1.25,
+          "duration_s": 0.7
+        }
+      },
+      "safe_zones": {
+        "hook_xy": [
+          540,
+          230
+        ],
+        "counter_xy": [
+          330,
+          1170
+        ],
+        "stamp_xy": [
+          230,
+          1150
+        ],
+        "caption_editonny_y": 1380
+      },
+      "cta_keyword_default": "ORCAMENTO",
+      "hashtags_default": [
+        "#materialdeconstrucao",
+        "#obra",
+        "#reforma",
+        "#engenharia",
+        "#construcaocivil"
+      ]
+    },
+    "industria": {
+      "label": "Indústria / B2B / Transformação",
+      "editonny_style": "night",
+      "palette": {
+        "card_bg": "#0B0F19",
+        "text_primary": "#F8FAFC",
+        "accent_primary": "#38BDF8",
+        "accent_secondary": "#22C55E",
+        "stamp_color": "green"
+      },
+      "typography": {
+        "hook_px": 84,
+        "pill_px": 56,
+        "caption_px": 68,
+        "stroke_px": 6,
+        "shadow_pct": 25,
+        "max_words_per_block": 4
+      },
+      "pacing": {
+        "max_first_word_delay_s": 0.4,
+        "min_cut_s": 1.0,
+        "target_median_cut_s": 2.15,
+        "max_static_shot_s": 4.0,
+        "jcut_lead_frames": 4,
+        "jcut_tail_trim_frames": 2
+      },
+      "zoom_plan": {
+        "base_scale": 1.08,
+        "price_or_number_zoom": {
+          "preset": "destaque",
+          "scale": 1.25,
+          "duration_s": 0.7
+        },
+        "argument_zoom": {
+          "preset": "lento",
+          "scale": 1.12,
+          "duration_s": 2.5
+        }
+      },
+      "safe_zones": {
+        "hook_xy": [
+          540,
+          230
+        ],
+        "counter_xy": [
+          330,
+          1170
+        ],
+        "stamp_xy": [
+          230,
+          1150
+        ],
+        "caption_editonny_y": 1380
+      },
+      "cta_keyword_default": "FICHA",
+      "hashtags_default": [
+        "#industria",
+        "#producaoindustrial",
+        "#b2bbrasil",
+        "#atacadoindustrial",
+        "#gestaoindustrial"
+      ]
+    },
+    "servicos": {
+      "label": "Serviços / Escritório (Advocacia, Contabilidade, Consultoria)",
+      "editonny_style": "paper",
+      "palette": {
+        "card_bg": "#FFFFFF",
+        "text_primary": "#1A1A2E",
+        "accent_primary": "#2563EB",
+        "accent_secondary": "#1E40AF",
+        "stamp_color": "blue"
+      },
+      "typography": {
+        "hook_px": 60,
+        "pill_px": 56,
+        "caption_px": 66,
+        "stroke_px": 6,
+        "shadow_pct": 25,
+        "max_words_per_block": 3
+      },
+      "pacing": {
+        "max_first_word_delay_s": 0.4,
+        "min_cut_s": 3.0,
+        "target_median_cut_s": 7.0,
+        "max_static_shot_s": 12.0,
+        "pause_cut_threshold_s": 0.65,
+        "edl_dry_mode": false,
+        "max_cuts_per_minute": 10.0,
+        "jcut_lead_frames": 4,
+        "jcut_tail_trim_frames": 2
+      },
+      "zoom_plan": {
+        "base_scale": 1.08,
+        "price_or_number_zoom": {
+          "preset": "destaque",
+          "scale": 1.25,
+          "duration_s": 0.7
+        },
+        "argument_zoom": {
+          "preset": "lento",
+          "scale": 1.12,
+          "duration_s": 3.0
+        }
+      },
+      "safe_zones": {
+        "hook_xy": [
+          540,
+          230
+        ],
+        "counter_xy": [
+          330,
+          1170
+        ],
+        "stamp_xy": [
+          230,
+          1150
+        ],
+        "caption_editonny_y": 1380
+      },
+      "cta_keyword_default": "DIAGNOSTICO",
+      "hashtags_default": [
+        "#gestaoempresarial",
+        "#consultoria",
+        "#contabilidade",
+        "#direitoempresarial",
+        "#negocios"
+      ]
+    },
+    "educacao": {
+      "label": "Educação / Cursos Técnicos / Treinamento",
+      "editonny_style": "paper",
+      "palette": {
+        "card_bg": "#FFFFFF",
+        "text_primary": "#1A1A2E",
+        "accent_primary": "#7C3AED",
+        "accent_secondary": "#FFDE00",
+        "stamp_color": "green"
+      },
+      "typography": {
+        "hook_px": 64,
+        "pill_px": 58,
+        "caption_px": 72,
+        "stroke_px": 6,
+        "shadow_pct": 25,
+        "max_words_per_block": 3
+      },
+      "pacing": {
+        "max_first_word_delay_s": 0.4,
+        "min_cut_s": 3.0,
+        "target_median_cut_s": 6.5,
+        "max_static_shot_s": 12.0,
+        "pause_cut_threshold_s": 0.65,
+        "edl_dry_mode": false,
+        "max_cuts_per_minute": 10.0,
+        "jcut_lead_frames": 4,
+        "jcut_tail_trim_frames": 2
+      },
+      "zoom_plan": {
+        "base_scale": 1.08,
+        "price_or_number_zoom": {
+          "preset": "destaque",
+          "scale": 1.25,
+          "duration_s": 0.7
+        },
+        "argument_zoom": {
+          "preset": "lento",
+          "scale": 1.12,
+          "duration_s": 2.8
+        }
+      },
+      "safe_zones": {
+        "hook_xy": [
+          540,
+          230
+        ],
+        "counter_xy": [
+          330,
+          1170
+        ],
+        "stamp_xy": [
+          230,
+          1150
+        ],
+        "caption_editonny_y": 1380
+      },
+      "cta_keyword_default": "AULA",
+      "hashtags_default": [
+        "#capacitacao",
+        "#cursotecnico",
+        "#aprendizado",
+        "#profissionalizante",
+        "#educacao"
+      ]
+    },
+    "saude": {
+      "label": "Saúde / Clínica / Odontologia / Medicina",
+      "editonny_style": "paper",
+      "palette": {
+        "card_bg": "#FFFFFF",
+        "text_primary": "#1A1A2E",
+        "accent_primary": "#6B4C9A",
+        "accent_secondary": "#2563EB",
+        "stamp_color": "green"
+      },
+      "typography": {
+        "hook_px": 58,
+        "pill_px": 58,
+        "caption_px": 68,
+        "stroke_px": 6,
+        "shadow_pct": 25,
+        "max_words_per_block": 3
+      },
+      "pacing": {
+        "max_first_word_delay_s": 0.4,
+        "min_cut_s": 3.0,
+        "target_median_cut_s": 7.5,
+        "max_static_shot_s": 12.0,
+        "pause_cut_threshold_s": 0.65,
+        "edl_dry_mode": false,
+        "max_cuts_per_minute": 10.0,
+        "jcut_lead_frames": 4,
+        "jcut_tail_trim_frames": 2
+      },
+      "zoom_plan": {
+        "base_scale": 1.08,
+        "price_or_number_zoom": {
+          "preset": "destaque",
+          "scale": 1.25,
+          "duration_s": 0.7
+        },
+        "argument_zoom": {
+          "preset": "lento",
+          "scale": 1.12,
+          "duration_s": 3.0
+        }
+      },
+      "safe_zones": {
+        "hook_xy": [
+          540,
+          230
+        ],
+        "counter_xy": [
+          330,
+          1170
+        ],
+        "stamp_xy": [
+          230,
+          1150
+        ],
+        "caption_editonny_y": 1360
+      },
+      "cta_keyword_default": "AVALIACAO",
+      "hashtags_default": [
+        "#saude",
+        "#odontologia",
+        "#reabilitacaooral",
+        "#prevencao",
+        "#clinica"
+      ]
+    },
+    "gastronomia": {
+      "label": "Gastronomia / Restaurante / Padaria / Food Service",
+      "editonny_style": "amber",
+      "palette": {
+        "card_bg": "#121318",
+        "text_primary": "#FFFFFF",
+        "accent_primary": "#FFDE00",
+        "accent_secondary": "#EF4444",
+        "stamp_color": "green"
+      },
+      "typography": {
+        "hook_px": 88,
+        "pill_px": 58,
+        "caption_px": 84,
+        "stroke_px": 7,
+        "shadow_pct": 30,
+        "max_words_per_block": 3
+      },
+      "pacing": {
+        "max_first_word_delay_s": 0.3,
+        "min_cut_s": 0.65,
+        "target_median_cut_s": 1.45,
+        "max_static_shot_s": 3.2,
+        "jcut_lead_frames": 3,
+        "jcut_tail_trim_frames": 2
+      },
+      "zoom_plan": {
+        "base_scale": 1.08,
+        "price_or_number_zoom": {
+          "preset": "impacto",
+          "scale": 1.45,
+          "duration_s": 0.15
+        },
+        "argument_zoom": {
+          "preset": "destaque",
+          "scale": 1.25,
+          "duration_s": 0.7
+        }
+      },
+      "safe_zones": {
+        "hook_xy": [
+          540,
+          230
+        ],
+        "counter_xy": [
+          330,
+          1170
+        ],
+        "stamp_xy": [
+          230,
+          1150
+        ],
+        "caption_editonny_y": 1400
+      },
+      "cta_keyword_default": "CARDAPIO",
+      "hashtags_default": [
+        "#gastronomia",
+        "#foodservice",
+        "#padaria",
+        "#confeitaria",
+        "#restaurante"
+      ]
+    },
+    "ecommerce": {
+      "label": "E-commerce / D2C / Loja Virtual",
+      "editonny_style": "night",
+      "palette": {
+        "card_bg": "#0B0F19",
+        "text_primary": "#FFFFFF",
+        "accent_primary": "#FFDE00",
+        "accent_secondary": "#22C55E",
+        "stamp_color": "green"
+      },
+      "typography": {
+        "hook_px": 92,
+        "pill_px": 58,
+        "caption_px": 88,
+        "stroke_px": 7,
+        "shadow_pct": 30,
+        "max_words_per_block": 3
+      },
+      "pacing": {
+        "max_first_word_delay_s": 0.3,
+        "min_cut_s": 0.65,
+        "target_median_cut_s": 1.55,
+        "max_static_shot_s": 3.5,
+        "jcut_lead_frames": 4,
+        "jcut_tail_trim_frames": 2
+      },
+      "zoom_plan": {
+        "base_scale": 1.08,
+        "price_or_number_zoom": {
+          "preset": "impacto",
+          "scale": 1.45,
+          "duration_s": 0.15
+        },
+        "argument_zoom": {
+          "preset": "reacao",
+          "scale": 1.3,
+          "duration_s": 0.35
+        }
+      },
+      "safe_zones": {
+        "hook_xy": [
+          540,
+          230
+        ],
+        "counter_xy": [
+          330,
+          1170
+        ],
+        "stamp_xy": [
+          230,
+          1150
+        ],
+        "caption_editonny_y": 1380
+      },
+      "cta_keyword_default": "QUERO",
+      "hashtags_default": [
+        "#ecommercebrasil",
+        "#lojavirtual",
+        "#achadinhos",
+        "#reviewdeproduto",
+        "#comprasonline"
+      ]
+    }
+  },
+  "apelidos": {
+    "supermercado": "varejo",
+    "atacadista": "varejo",
+    "distribuidora": "varejo",
+    "clinica": "saude",
+    "odontologia": "saude",
+    "restaurante": "gastronomia",
+    "escritorio": "servicos",
+    "loja_material_construcao": "material_construcao"
+  },
+  "tipo_padrao": {
+    "varejo": "montagem_criador",
+    "material_construcao": "montagem_criador",
+    "gastronomia": "montagem_criador",
+    "industria": "montagem_criador",
+    "ecommerce": "montagem_criador",
+    "empresas_locais": "fala_continua",
+    "servicos": "fala_continua",
+    "educacao": "fala_continua",
+    "saude": "fala_continua"
+  }
+}

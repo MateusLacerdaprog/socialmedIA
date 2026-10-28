@@ -1,0 +1,23 @@
+__pycache__/
+*.pyc
+
+# Regra: nada de terceiros no Git (repositorio publico). Material de terceiros fica so na maquina.
+terceiros/
+_versoes/
+memes_cortados/
+entrada_mp4/
+projetos/
+*.mp4
+*.mov
+*.webm
+*.wav
+*.mp3
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+*.pdf
+*.zip
+*.bundle
+*.ecproj

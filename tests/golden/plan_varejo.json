@@ -1,0 +1,163 @@
+{
+ "audio_dsp_spec": {
+  "ffmpeg_voice_chain": "highpass=f=80,equalizer=f=3000:t=q:w=1:g=2,acompressor=threshold=-18dB:ratio=3:attack=5:release=50,loudnorm=I=-14:TP=-1.5:LRA=11",
+  "max_true_peak_dbtp": -1.5,
+  "music_bed_speech_db": -26.0,
+  "target_lufs": -14.0
+ },
+ "editonny_project_json": {
+  "animations": [],
+  "blocks": [
+   {
+    "scene": "fullscreen",
+    "start": 0,
+    "zoom": 1.08
+   }
+  ],
+  "captions": {
+   "enabled": true,
+   "inFrame": false,
+   "maxWords": 3,
+   "style": "standard"
+  },
+  "corrections": {},
+  "edit": "../edit",
+  "endCard": {
+   "button": "Tap Learn more",
+   "enabled": false,
+   "logo": "",
+   "seconds": 1.8,
+   "sub": "",
+   "title": ""
+  },
+  "endHold": 0,
+  "format": "9:16",
+  "scenes": [],
+  "sounds": [],
+  "style": "amber",
+  "title": "Teste",
+  "zoom": 1.08
+ },
+ "effectcraft_hook_spec": {
+  "duration_s": 5.0,
+  "font_size_px": 58,
+  "position_xy": [
+   540,
+   250
+  ],
+  "stroke_px": 7,
+  "text_must_match_speech": "Teste",
+  "type": "titulo"
+ },
+ "encerramento": "anúncio de marca: cartão de 0,8-1,2 s com logo + 1 CTA; conteúdo de criador/série: sem cartão, termina na última fala",
+ "evidence_rules": {
+  "card_border_radius_px": 36,
+  "card_box_px": [
+   50,
+   520,
+   980,
+   654
+  ],
+  "default_fit": "contain",
+  "forbid_reuse_across_projects": true,
+  "max_moments_default": 2,
+  "require_entry_transition_scene": "compositions/scenes/transition-zoom-0X.html",
+  "require_exit_transition_scene": "compositions/scenes/transition-glow-0X.html",
+  "require_sfx": [
+   "whoosh",
+   "photo",
+   "pop"
+  ],
+  "require_zoom_motion": {
+   "ease": "power2.out",
+   "scale": 1.1
+  }
+ },
+ "legenda_empresa": {
+  "animacao": "nenhuma",
+  "contorno": 2,
+  "cor": "#FFFFFF",
+  "destaque": "#FFDE00",
+  "estilo": "karaoke",
+  "maiusculas": false,
+  "pos_y": 1360,
+  "sombra": 2,
+  "tamanho": 44
+ },
+ "niche_profile": {
+  "cta_keyword_default": "TABELA",
+  "editonny_style": "amber",
+  "hashtags_default": [
+   "#atacado",
+   "#varejo",
+   "#supermercado",
+   "#economia",
+   "#insumos"
+  ],
+  "label": "Varejo / Supermercado / Atacadista",
+  "pacing": {
+   "jcut_lead_frames": 4,
+   "jcut_tail_trim_frames": 2,
+   "max_first_word_delay_s": 0.38,
+   "max_static_shot_s": 3.8,
+   "min_cut_s": 0.65,
+   "target_median_cut_s": 1.67
+  },
+  "palette": {
+   "accent_primary": "#FFDE00",
+   "accent_secondary": "#FF6B00",
+   "card_bg": "#121318",
+   "stamp_color": "green",
+   "text_primary": "#FFFFFF"
+  },
+  "safe_zones": {
+   "caption_editonny_y": 1400,
+   "counter_xy": [
+    330,
+    1170
+   ],
+   "hook_xy": [
+    540,
+    250
+   ],
+   "stamp_xy": [
+    230,
+    1150
+   ]
+  },
+  "typography": {
+   "caption_px": 88,
+   "hook_px": 90,
+   "max_words_per_block": 3,
+   "pill_px": 58,
+   "shadow_pct": 35,
+   "stroke_px": 7
+  },
+  "zoom_plan": {
+   "argument_zoom": {
+    "duration_s": 0.7,
+    "preset": "destaque",
+    "scale": 1.25
+   },
+   "base_scale": 1.08,
+   "price_or_number_zoom": {
+    "duration_s": 0.15,
+    "preset": "impacto",
+    "scale": 1.45
+   }
+  }
+ },
+ "reel_format": "desafio_orcamento",
+ "reel_type": {
+  "edl_dry_mode": true,
+  "first_cut_max_s": 1.2,
+  "max_cuts_per_minute": 45.0,
+  "max_shot_s": 8.0,
+  "median_cut_s": [
+   0.8,
+   1.6
+  ],
+  "pause_cut_threshold_s": 0.35,
+  "tipo": "montagem_criador"
+ }
+}
