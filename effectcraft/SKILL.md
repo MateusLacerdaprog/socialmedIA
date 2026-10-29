@@ -24,6 +24,13 @@ Receitas: `titulo` (pop com overshoot), `texto` (`--animacao typewriter|fadeUpCh
 `contador` (`--de --ate --sufixo`), `circulo` (desenha em volta de `--x --y`), `flash` (0,3–1 s, cobre a tela).
 Opções: `--cor #RRGGBB` (padrão `#FFDE00`), `--tamanho`, `--x`, `--y` (padrão 230 = faixa do gancho), `--duracao`.
 
+## Motion automático na edição
+
+O `scripts/editar_reel.py` usa estas receitas sozinho, **só com palavras ditas** (transcrição do corte): abertura
+(título dado e dito, ou o começo da 1ª frase), pergunta curta falada (`texto`, amarelo), número falado (`contador`),
+fechamento (fim da última frase) e `flash` em cada emenda de corte. Títulos longos quebram em 2 linhas sem deixar
+artigo/preposição no fim da linha; mínimo de 1,8 s na tela, sem sobreposição, y = 250 (acima do rosto e da legenda).
+
 ## Sobrepor ao vídeo (FFmpeg)
 
 O decodificador nativo do FFmpeg ignora a transparência do VP9: declare `-c:v libvpx-vp9` **antes** do `-i` do gráfico.

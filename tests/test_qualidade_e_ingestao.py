@@ -59,7 +59,7 @@ def _receber(pasta, *extra):
 def pasta(tmp_path):
     (tmp_path / "entrada_mp4").mkdir()
     video_teste(tmp_path / "entrada_mp4" / "base.mp4", d=1)
-    assets = tmp_path / "projetos" / "socialmedia_base" / "proj" / "assets"
+    assets = tmp_path / "projetos" / "socialmedia_base" / "imagens"
     assets.mkdir(parents=True)
     (assets / "antiga.png").write_bytes(b"imagem-antiga")
     return tmp_path
@@ -68,7 +68,7 @@ def pasta(tmp_path):
 def test_caminho_errado_nao_mexe_nas_imagens(pasta):
     r = _receber(pasta, "--images", str(pasta / "nao_existe.png"))
     assert r.returncode != 0
-    assert (pasta / "projetos/socialmedia_base/proj/assets/antiga.png").is_file()
+    assert (pasta / "projetos/socialmedia_base/imagens/antiga.png").is_file()
 
 
 def test_imagem_antiga_vai_para_removidas_nunca_apagada(pasta):
@@ -76,7 +76,7 @@ def test_imagem_antiga_vai_para_removidas_nunca_apagada(pasta):
     r = _receber(pasta, "--images", str(pasta / "nova.png"))
     assert r.returncode == 0, r.stderr
     proj = pasta / "projetos" / "socialmedia_base"
-    assert (proj / "proj/assets/nova.png").is_file()
+    assert (proj / "imagens/nova.png").is_file()
     assert (proj / "_removidas/antiga.png").read_bytes() == b"imagem-antiga"
     plano = json.loads((proj / "socialmedia_plan.json").read_text(encoding="utf-8"))
     assert "legenda_empresa" in plano["plano_socialmedia"]

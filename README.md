@@ -14,6 +14,7 @@ O agente transforma um pedido ("edita esse vídeo para o Instagram da loja") em 
 - `scripts/qualidade.py`: portão do vídeo exportado (resolução, fps, codecs, sincronia, −14 LUFS, pico).
 - `effectcraft/`: gráficos de motion em WebM transparente feitos no EffectCraft.
 - `tests/`: testes automatizados. Arquitetura, licenças e próximos passos em [ARQUITETURA.md](ARQUITETURA.md).
+- `scripts/editar_reel.py`: **caminho principal** — do vídeo bruto ao `RASCUNHO_*.mp4` verificado (editonny + HyperFrames + motion do EffectCraft + portões), em etapas com cache.
 - `scripts/receber_mp4.py`: recebe um MP4 numa pasta de entrada e gera o plano de edição.
 
 Os motores de edição (editonny, HyperFrames, o programa EffectCraft e o FFmpeg) ficam fora deste repositório; a skill `effectcraft/` (script que gera os gráficos de motion no EffectCraft) vem junto. A pasta de trabalho (`entrada_mp4/`, `memes_cortados/`, `projetos/`) é a definida em `SOCIALMEDIA_DIR` ou a pasta atual.

@@ -19,8 +19,23 @@ projeto. Os motores pesados ficam fora do repositório e são chamados por linha
 | Regra “nada de terceiros” | `scripts/verificar_terceiros.py` + hook `pre-commit` + teste | lista de nomes bloqueados é local (`terceiros/nomes_bloqueados.txt`) |
 | Testes | `tests/` (`-m "not lento"` = ciclo rápido) | golden do plano dos 9 nichos |
 
-Fluxo: `receber_mp4` → `plan` → editonny (transcrição, EDL, `project.json`) → `audit-project` → render →
-`RASCUNHO_*.mp4` → `verificar` → quadros → `caption` → aprovação do usuário.
+Fluxo (um comando: `scripts/editar_reel.py`, etapas com cache em `socialmedia_estado.json`):
+`receber_mp4` → transcrição (editonny) → EDL pelo tipo de Reel → `waveform_cut` (+ `precise_edges` em fala
+contínua) → `render_cut` → `build.py new` + plano da SocialmedIA + cenas de transição (`editonny scene`) →
+`audit-project` → HyperFrames → motion do EffectCraft (só palavras ditas) → `RASCUNHO_*.mp4` → `verificar`
+(+ 2ª passada de loudness) → `quality_gate` do editonny → folha de quadros → `caption` → aprovação do usuário.
+
+### Achados da integração real (editonny 0.8 / HyperFrames)
+
+- `"dry": false` mantém as bordas escritas **e desliga o J-cut** do trecho: em fala contínua as bordas vão para o
+  `precise_edges.py --apply` em vez do `waveform_cut`.
+- Cenas listadas no `project.json` precisam existir no projeto: transições entram por `apply.py --use`.
+- O projeto do editonny exige pasta vazia: imagens ficam em `imagens/` e são copiadas depois do `new`.
+- `quality_gate.py` sai com código ≠ 0 ao reprovar (resultado, não erro); nesta máquina roda sem OCR
+  (`text_reader: null`) e falha ao extrair o último quadro em alguns vídeos (limitação do editonny).
+- O AAC estoura o pico depois do loudnorm: a 2ª passada mira 0,5 dB abaixo do limite.
+- Corrigidos no auditor: gancho medido no tempo do **corte** (não do original), cortes = emendas (não trechos),
+  e fala contínua aceita tomada longa até `max_shot_s`.
 
 ## Matriz de compatibilidade dos gráficos
 

@@ -45,10 +45,26 @@ def _js(s):
     return json.dumps(s, ensure_ascii=False)
 
 
+def quebrar(texto, limite=18):
+    """Texto longo vira 2 linhas equilibradas (quebra no espaço mais perto do meio): legível sem encolher demais."""
+    if len(texto) <= limite or " " not in texto:
+        return texto
+    meio = len(texto) / 2
+    espacos = sorted((k for k, ch in enumerate(texto) if ch == " "), key=lambda k: abs(k - meio))
+    # a 1ª linha nunca termina em artigo/preposição/conjunção ("AINDA TEMOS O / QUE…" vira "AINDA TEMOS / O QUE…")
+    bons = [k for k in espacos if texto[:k].split()[-1].lower() not in LIGACAO]
+    i = (bons or espacos)[0]
+    return texto[:i] + "\r" + texto[i + 1:]
+
+
+LIGACAO = {"o", "a", "os", "as", "um", "uma", "uns", "umas", "de", "do", "da", "dos", "das", "em", "no", "na", "nos",
+           "nas", "por", "para", "pra", "com", "sem", "que", "e", "ou", "se", "ao", "à", "aos", "às", "the", "of", "to"}
+
+
 def _texto_jsx(a):
     """Camada de texto 'T' com Arial Black, contorno preto e encolhida para caber em 960 px."""
     return f"""
-var t = c.layers.addText({_js(a.texto)}); t.name = "T";
+var t = c.layers.addText({_js(quebrar(a.texto))}); t.name = "T";
 var d = t.property("Source Text").value;
 d.font = "Arial-Black"; d.fontSize = {a.tamanho}; d.fillColor = {_cor(a.cor)};
 d.applyStroke = true; d.strokeColor = [0,0,0]; d.strokeWidth = 10; d.strokeOverFill = false;

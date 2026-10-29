@@ -536,22 +536,25 @@ def audit_edl(edl_path: Path, tipo: str = "montagem_criador") -> Dict[str, Any]:
         for r in ranges
         if "sem fala" not in r.get("quote", "").lower()
     ]
-    first_start = float(ranges[0]["start"])
-    ww_path = edl_path.parent / "waveform_words.json"
-    if ww_path.is_file():
+    # 1ª palavra no tempo do VÍDEO CORTADO (transcrição do corte ou alinhamento do editonny). O início do trecho
+    # no original não serve: 3 s de silêncio antes da fala não atrasam o gancho se o corte começa na fala.
+    first_start: Optional[float] = None
+    for nome in ("waveform_words.json", "transcripts/cut.json"):
         try:
-            ww_data = json.loads(ww_path.read_text(encoding="utf-8"))
-            words = ww_data.get("words", [])
-            if words:
-                first_start = float(words[0].get("start", first_start))
-        except Exception:
-            pass
+            words = json.loads((edl_path.parent / nome).read_text(encoding="utf-8")).get("words", [])
+        except (OSError, ValueError):
+            continue
+        falas = [w for w in words if str(w.get("text", w.get("word", ""))).strip()]
+        if falas:
+            first_start = float(falas[0]["start"])
+            break
     total_duration = round(sum(durations), 2)
     median_cut = round(statistics.median(speech_durations), 2) if speech_durations else 0.0
     mean_cut = round(statistics.mean(speech_durations), 2) if speech_durations else 0.0
     max_cut = max(speech_durations) if speech_durations else 0.0
     min_cut = min(speech_durations) if speech_durations else 0.0
-    cuts_per_minute = round(len(ranges) / (total_duration / 60.0), 2) if total_duration > 0 else 0.0
+    # corte = emenda entre dois trechos (trechos - 1): uma tomada única tem zero cortes
+    cuts_per_minute = round((len(ranges) - 1) / (total_duration / 60.0), 2) if total_duration > 0 else 0.0
     any_dry_true = any(bool(r.get("dry", False)) for r in ranges)
 
     # Also check edl_manual.json next to edl.json if present
@@ -570,11 +573,13 @@ def audit_edl(edl_path: Path, tipo: str = "montagem_criador") -> Dict[str, Any]:
         if "sem fala" not in r.get("quote", "").lower() and (float(r["end"]) - float(r["start"])) > regra["max_shot_s"]
     ]
     lo, hi = regra["median_cut_s"]
+    if tipo == "fala_continua":            # tomada longa é aceita até max_shot_s (PLAYBOOK §0), com texto em movimento
+        hi = regra["max_shot_s"]
     max_cpm = float(regra.get("max_cuts_per_minute", 45.0))
 
     jcut = data.get("jcut", {})
     checks = {
-        "hook_starts_under_0_45s": first_start <= 0.45,
+        "hook_starts_under_0_45s": None if first_start is None else first_start <= 0.45,
         "median_cut_in_reel_type_band": lo <= median_cut <= hi,
         "jcut_configured": bool(jcut.get("lead_frames", 0) >= 2),
         "output_is_vertical_1080x1920": (
@@ -585,6 +590,7 @@ def audit_edl(edl_path: Path, tipo: str = "montagem_criador") -> Dict[str, Any]:
         "no_auto_dry_chopping_in_fala_continua": (not any_dry_true) if tipo == "fala_continua" else True,
     }
 
+    avaliados = {k: v for k, v in checks.items() if v is not None}
     return {
         "file": str(edl_path),
         "reel_type": {"tipo": tipo, **regra},
@@ -601,7 +607,8 @@ def audit_edl(edl_path: Path, tipo: str = "montagem_criador") -> Dict[str, Any]:
         },
         "cuts_exceeding_max_shot": long_cuts,
         "playbook_checks": checks,
-        "score_pct": round(100.0 * sum(1 for v in checks.values() if v) / len(checks), 1),
+        "score_pct": round(100.0 * sum(1 for v in avaliados.values() if v) / max(1, len(avaliados)), 1),
+        "not_evaluated": [k for k, v in checks.items() if v is None],
     }
 
 

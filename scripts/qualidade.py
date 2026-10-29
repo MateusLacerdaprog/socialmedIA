@@ -111,6 +111,40 @@ def verificar(video: Path) -> Dict[str, Any]:
     return {"arquivo": str(video), "valido": not any(i["nivel"] == "erro" for i in itens), "medidas": m, "itens": itens}
 
 
+def corrigir_loudness(video: Path) -> None:
+    """2ª passada do loudnorm só no áudio (o vídeo é copiado): mede, aplica com os valores medidos e troca o
+    arquivo no lugar (via .tmp). O loudnorm de uma passada erra 1–2 dB em vídeos curtos."""
+    video = Path(video)
+    alvo = f"I={LUFS_ALVO}:TP={TRUE_PEAK_MAX - 0.5}:LRA=11"   # folga: o AAC estoura um pouco o pico
+    err = _rodar(["ffmpeg", "-hide_banner", "-nostats", "-i", str(video), "-af",
+                  f"loudnorm={alvo}:print_format=json", "-vn", "-f", "null", "-"]).stderr
+    bloco = err[err.rfind("{"):err.rfind("}") + 1]
+    try:
+        m = json.loads(bloco)
+    except ValueError as e:
+        raise ValueError(f"não consegui medir o loudness de {video.name}") from e
+    filtro = (f"loudnorm={alvo}:measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}"
+              f":measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true")
+    tmp = video.with_suffix(".loud.tmp.mp4")
+    r = _rodar(["ffmpeg", "-v", "error", "-y", "-i", str(video), "-map", "0:v", "-map", "0:a", "-c:v", "copy",
+                "-af", filtro, "-ar", "48000", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(tmp)])
+    if r.returncode or not tmp.is_file():
+        tmp.unlink(missing_ok=True)
+        raise ValueError(f"a correção de loudness falhou: {r.stderr.strip()[-300:]}")
+    tmp.replace(video)
+
+
+def folha_de_quadros(video: Path, saida: Path, n: int = 4, largura: int = 270) -> Path:
+    """Quadros espalhados pelo vídeo, lado a lado, para revisar texto, zonas seguras e transições a olho."""
+    dur = float(medir(Path(video))["duracao_s"]) or 1.0
+    passo = dur / n
+    filtro = f"fps=1/{passo:.4f}:start_time={passo / 2:.4f},scale={largura}:-2,tile={n}x1"
+    r = _rodar(["ffmpeg", "-v", "error", "-y", "-i", str(video), "-vf", filtro, "-frames:v", "1", str(saida)])
+    if r.returncode:
+        raise ValueError(f"folha de quadros falhou: {r.stderr.strip()[-300:]}")
+    return Path(saida)
+
+
 def main() -> int:
     for fluxo in (sys.stdout, sys.stderr):
         if hasattr(fluxo, "reconfigure"):

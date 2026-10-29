@@ -92,7 +92,9 @@ def prepare_socialmedia_job(
 
     job_dir = ROOT_DIR / "projetos" / f"socialmedia_{video_path.stem}"
     job_dir.mkdir(parents=True, exist_ok=True)
-    assets_dir = job_dir / "proj" / "assets"
+    # imagens do vídeo ficam em imagens/; o editar_reel.py copia para proj/assets/ depois do `build.py new`
+    # (o editonny exige a pasta do projeto vazia ao criar)
+    assets_dir = job_dir / "imagens"
     assets_dir.mkdir(parents=True, exist_ok=True)
 
     faltando = [img for img in images if not Path(img).resolve().is_file()]
@@ -119,7 +121,7 @@ def prepare_socialmedia_job(
             shutil.copy2(src_img, dst_img)
         authorized_images.append(
             {
-                "arquivo": f"assets/{dst_img.name}",
+                "arquivo": f"imagens/{dst_img.name}",
                 "sha256": sme._sha256_file(dst_img),
             }
         )

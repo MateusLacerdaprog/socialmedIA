@@ -41,7 +41,8 @@ continue nas etapas que não dependem dele.
 
 | Comando | Faz |
 |---|---|
-| `python <SOCIALMEDIA>/scripts/receber_mp4.py [VIDEO] --niche N --title T --images A B` | cria `projetos/socialmedia_<video>/` com `assets/` isolado + `socialmedia_plan.json` |
+| **`python <SOCIALMEDIA>/scripts/editar_reel.py VIDEO --niche N --title "frase dita" [--tipo X] [--images A B --momentos 4.5-8 20-24]`** | **caminho principal:** vídeo bruto → transcrição → corte pelo tipo de Reel → projeto do editonny com o plano → render HyperFrames → título EffectCraft (só se dito) → `RASCUNHO_<video>.mp4` + portões. Etapas com cache (`--ate`, `--refazer`); `--modelo large-v3-turbo` transcreve melhor (download de 1,6 GB na 1ª vez) |
+| `python <SOCIALMEDIA>/scripts/receber_mp4.py [VIDEO] --niche N --title T --images A B` | só a 1ª etapa: cria `projetos/socialmedia_<video>/` com `imagens/` isolado + `socialmedia_plan.json` |
 | `python <SOCIALMEDIA>/scripts/socialmedia_engine.py plan --niche N --title T [--tipo X]` | plano: `project.json` do editonny, legenda medida (`legenda_empresa`), gancho, áudio |
 | `… socialmedia_engine.py caption --niche N --hook H --bullets … [--keyword K --hashtags …]` | monta e valida a legenda do post (sai 1 se inválida) |
 | `… socialmedia_engine.py audit <edl.json> --tipo X` | confere o EDL contra o tipo de Reel |
@@ -64,6 +65,9 @@ Conhecimento por assunto (leia só o módulo da etapa): [01 hooks](modules/01-ho
 
 ## 5. Procedimento
 
+**Atalho:** os passos 2 a 5 rodam juntos com `editar_reel.py` (as regras abaixo já estão dentro dele). Use os passos
+manuais só para ajustar um ponto (uma emenda, uma cena) e rode o `editar_reel.py` de novo: ele refaz só o que mudou.
+
 **Passo 1 — Diagnóstico.** Defina nicho e **tipo de Reel** (PLAYBOOK §0); antes de editar, pergunte se cabe
 **colaboração** (criador local, série numerada, evento): pelo menos 15 dos 27 virais medidos eram colab.
 
@@ -80,14 +84,18 @@ saúde/serviços/educação → `paper` (`maxWords: 3`); indústria/e-commerce �
 **Passo 2 — Transcrição e corte (editonny).** `transcribe_batch --language pt`, `pack_transcripts`, `noise_check`.
 No `edl.json`: primeira palavra em `≤ 0,40 s` (o auditor tolera `0,45 s` pela imprecisão da transcrição);
 `"jcut": {"lead_frames": 4, "tail_trim_frames": 2}`; em `fala_continua` nunca `"dry": true` nem picotar respiros
-internos de `0,25–0,55 s`, e cubra 1 a 2 emendas com as imagens para restarem 3 a 4 cortes secos visíveis.
+internos de `0,25–0,55 s` (no editonny, `"dry": false` mantém as bordas e **desliga o J-cut** daquele trecho: as bordas
+vão para o `precise_edges.py --apply`); acima de 10 cortes/min, junte os trechos pelas menores pausas (a pausa fica).
+Cubra 1 a 2 emendas com as imagens para restarem 3 a 4 cortes secos visíveis.
 
 **Passo 3 — Direção visual (1080×1920).** `align_words` e `face_layout` sobre o `cut.mp4` definitivo.
 - **Imagens (`scene: "evidence"`):** 2 momentos (dor/contexto `~4,5–8,5 s`; mecanismo/prova `~20–25 s`), `fit: "contain"`
   no card `x=50, y=520, w=980, h=654` (raio 36). **Toda imagem entra e sai com transição**: `transition-zoom` em
   `início ± 0,25 s` e `transition-glow` em `fim ± 0,20 s` (`overContent: true`), zoom no bloco
   `"zooms": [{"at": início, "end": fim, "scale": 1.10, "ease": "power2.out", "sound": "whoosh"}]` (formato do
-  `build.py`: sem `at` o build falha) e sons pelo `sound_plan.py` (`whoosh`, `photo`, `pop`). Nunca imagem estática em corte seco.
+  `build.py`: sem `at` o build falha). As cenas de transição entram pelo `editonny scene --use transition-zoom|transition-glow
+--start --end` (o arquivo da cena precisa existir no projeto), e os sons pelo `sound_plan.py` (`whoosh`, `photo`, `pop`).
+Nunca imagem estática em corte seco.
 - **Zonas seguras:** gancho em `y = 230–260` por `3–8 s` (editonny ou `ec_grafico.py titulo`); `counter` em
   `[330, 1170]`, `stamp` em `[230, 1150]`; legenda do editonny `standard`, `maxWords 3`, `y = 1380–1400`
   (`1290` durante `evidence`); legenda ASS própria de empresa: campo `legenda_empresa` do plano (44 px, caixa normal,
@@ -99,8 +107,9 @@ internos de `0,25–0,55 s`, e cubra 1 a 2 emendas com as imagens para restarem 
 **Passo 4 — Áudio.** Voz a `−14 LUFS` integrado, pico `≤ −1,5 dBTP`, música com ducking a `−26 dB` sob a fala
 (cadeia no campo `audio_dsp_spec` do plano). Nunca `zoompan` no FFmpeg: use `perspective` ou o zoom do editonny.
 
-**Passo 5 — Render e portões.** `audit-project` → render → copie a saída para `RASCUNHO_<nome>.mp4` → `verificar` →
-quadros das transições/imagens com FFmpeg, olhados em tamanho real (português, zonas seguras, legibilidade).
+**Passo 5 — Render e portões.** `audit-project` → render → `RASCUNHO_<nome>.mp4` → `verificar` (se só o loudness
+falhar, a 2ª passada corrige: `qualidade.corrigir_loudness`) → `quality_gate.py` do editonny (OCR do texto na tela,
+zonas seguras) → `quadros_rascunho.png`, olhado em tamanho real (português, zonas seguras, legibilidade).
 
 **Passo 6 — Legenda do post.** `caption` com o texto do cliente: linha 1 `≤ 125` caracteres que não repete a
 primeira fala; corpo escaneável (itens/preços ou 3 pontos); **um CTA só** (palavra-código **ou** envio por DM; nos

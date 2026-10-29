@@ -252,3 +252,27 @@ def test_preset_de_meme_bloqueado_no_catalogo_falha():
     d["bloqueados_tier3"].append("a_reacao_surpresa.mp4")
     with pytest.raises(sme.PresetInvalido, match="tier 3"):
         sme._validar_memes(d)
+
+
+def test_auditoria_gancho_medido_no_corte_nao_no_original(tmp_path):
+    ranges = [{"id": 1, "start": 3.0, "end": 9.0, "quote": "fala"}]          # 3 s de silêncio no ORIGINAL
+    p = _edl(tmp_path, ranges)
+    r = sme.audit_edl(p, "fala_continua")
+    assert r["playbook_checks"]["hook_starts_under_0_45s"] is None and "hook_starts_under_0_45s" in r["not_evaluated"]
+    (tmp_path / "transcripts").mkdir()
+    (tmp_path / "transcripts" / "cut.json").write_text(json.dumps({"words": [{"text": "Oi", "start": 0.12, "end": 0.3}]}))
+    assert sme.audit_edl(p, "fala_continua")["playbook_checks"]["hook_starts_under_0_45s"] is True
+    (tmp_path / "transcripts" / "cut.json").write_text(json.dumps({"words": [{"text": "Oi", "start": 0.9, "end": 1.1}]}))
+    assert sme.audit_edl(p, "fala_continua")["playbook_checks"]["hook_starts_under_0_45s"] is False
+
+
+def test_auditoria_fala_continua_aceita_tomada_longa(tmp_path):
+    r = sme.audit_edl(_edl(tmp_path, [{"id": 1, "start": 0.1, "end": 30.1, "quote": "fala"}]), "fala_continua")
+    assert r["playbook_checks"]["median_cut_in_reel_type_band"] is True                # 30 s <= 37 s
+    r = sme.audit_edl(_edl(tmp_path, [{"id": 1, "start": 0.1, "end": 40.1, "quote": "fala"}]), "fala_continua")
+    assert r["playbook_checks"]["median_cut_in_reel_type_band"] is False
+
+
+def test_auditoria_tomada_unica_tem_zero_cortes(tmp_path):
+    r = sme.audit_edl(_edl(tmp_path, [{"id": 1, "start": 0.1, "end": 5.1, "quote": "fala"}]), "fala_continua")
+    assert r["cuts_per_minute"] == 0 and r["playbook_checks"]["cuts_per_minute_within_limit"] is True
