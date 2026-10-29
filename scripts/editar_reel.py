@@ -33,6 +33,7 @@ AQUI = Path(__file__).resolve().parent
 sys.path.insert(0, str(AQUI))
 sys.path.insert(0, str(AQUI.parent / "effectcraft"))
 
+import legenda_teleprompter  # noqa: E402
 import qualidade  # noqa: E402
 import receber_mp4  # noqa: E402
 import socialmedia_engine as sme  # noqa: E402
@@ -43,6 +44,12 @@ SEM_JANELA = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 ETAPAS = ("preparar", "transcrever", "cortar", "projeto", "render")
 PAD_INICIO, PAD_FIM = 0.12, 0.20          # s antes da 1ª e depois da última palavra de cada trecho
 DUR_TITULO = 3.0                          # s do título do gancho (PLAYBOOK: 3–8 s)
+TITULO_ATE = 4.1                          # a pílula de título fica 0,05–4,1 s (padrão aprovado)
+TITULO_MAX = 45                           # caracteres: resumo curto, cabe numa pílula
+FILTRO_ENTREGA = "scale=1080:1920:flags=lanczos,setsar=1,format=yuv420p"
+NITIDEZ = ",unsharp=5:5:0.35:3:3:0"        # só quando a gravação é menor que 1080 de largura
+CODIFICACAO_ENTREGA = ["-c:v", "libx264", "-crf", "16", "-preset", "slow", "-profile:v", "high",
+                       "-maxrate", "16M", "-bufsize", "32M", "-r", "30"]
 
 
 class ErroEdicao(RuntimeError):
@@ -205,14 +212,23 @@ def _palavras(edit: Path, stem: str) -> List[Dict[str, Any]]:
 
 # ------------------------------------------------------------------ pipeline
 def editar(video: Path, niche: str, titulo: str, tipo: Optional[str] = None, imagens: Optional[List[str]] = None,
-           momentos: Optional[List[List[float]]] = None, modelo: str = "small", qualidade_hf: str = "standard",
+           momentos: Optional[List[List[float]]] = None, modelo: str = "small", qualidade_hf: str = "looks",
            ate: str = "render", refazer: bool = False, ocr: bool = True,
-           correcoes: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
-    imagens, momentos, correcoes = imagens or [], momentos or [], correcoes or {}
+           correcoes: Optional[Dict[str, str]] = None, rotulos: Optional[List[str]] = None,
+           teleprompter: bool = True) -> Dict[str, Any]:
+    imagens, momentos, correcoes, rotulos = imagens or [], momentos or [], correcoes or {}, rotulos or []
     if len(imagens) != len(momentos):
         raise ValueError("cada imagem precisa de um momento (--momentos 4.5-8 ...), na mesma ordem")
+    if rotulos and len(rotulos) != len(imagens):
+        raise ValueError("--rotulos: um título por imagem, na mesma ordem")
+    validar_titulo(titulo)
+    for r in rotulos:
+        validar_titulo(r)
     tipo = sme.resolve_reel_type(niche, tipo, None)
-    res: Dict[str, Any] = {"video": str(video), "tipo": tipo, "etapas": {}}
+    res: Dict[str, Any] = {"video": str(video), "tipo": tipo, "etapas": {}, "avisos": []}
+    if not imagens:
+        res["avisos"].append("sem imagens: o padrão aprovado usa 1–2 imagens do cliente em card (--images --momentos "
+                             "--rotulos); peça as imagens deste vídeo")
 
     # 1. preparar
     job = receber_mp4.prepare_socialmedia_job(video_path=video, niche=niche, reel_format="reel", title=titulo,
@@ -222,9 +238,12 @@ def editar(video: Path, niche: str, titulo: str, tipo: Optional[str] = None, ima
     est = Estado(pasta) if not refazer else Estado.__new__(Estado)
     if refazer:
         est.arq, est.d = pasta / "socialmedia_estado.json", {}
-    evid = [{"start": a, "end": b, "file": f"assets/{Path(img).name}"} for img, (a, b) in zip(imagens, momentos)]
+    evid = [{"start": a, "end": b, "file": f"assets/{Path(img).name}", "label": (rotulos[i] if rotulos else "")}
+            for i, (img, (a, b)) in enumerate(zip(imagens, momentos))]
     plano = sme.build_editing_plan(niche, "reel", titulo, tipo=tipo, evidence_moments=evid,
                                    max_evidence_moments=max(2, len(evid)))
+    if titulo.strip():                                   # pílula de título do editonny (o padrão aprovado)
+        plano["editonny_project_json"]["animations"].insert(0, pilula_titulo(titulo))
     res["etapas"]["preparar"] = str(pasta)
 
     # 2. transcrever (a fonte entra no edit/ por link, sem duplicar o arquivo)
@@ -273,6 +292,8 @@ def editar(video: Path, niche: str, titulo: str, tipo: Optional[str] = None, ima
 
     # 4. projeto do editonny com o plano da SocialmedIA
     plano["editonny_project_json"]["corrections"] = correcoes      # legenda do editonny com as correções pedidas
+    if teleprompter:                                   # a legenda teleprompter da SocialmedIA substitui a do editonny
+        plano["editonny_project_json"]["captions"]["enabled"] = False
     k = Estado.chave(k, plano["editonny_project_json"], [_assinatura(Path(i)) for i in imagens])
     if not est.feito("projeto", k, proj / "project.json"):
         log("montando o projeto do editonny…")
@@ -301,25 +322,36 @@ def editar(video: Path, niche: str, titulo: str, tipo: Optional[str] = None, ima
     # 5. render + título do EffectCraft (só se foi dito)
     rascunho = pasta / f"RASCUNHO_{video.stem}.mp4"
     hf = proj / "renders" / "rascunho.mp4"
-    k = Estado.chave(k, qualidade_hf, titulo, correcoes, "motion-1")
+    k = Estado.chave(k, qualidade_hf, titulo, correcoes, teleprompter, "entrega-3")
     if not est.feito("render", k, rascunho):
         log("compondo e renderizando (HyperFrames)…")
         build(proj, "prepare", tempo=600)
         build(proj, "compose", tempo=900)
+        try:                                              # sons (pop/whoosh) nos gráficos, como no padrão aprovado
+            helper("sound_plan", "--project", proj, "--mode", "visuals", cwd=pasta, tempo=600)
+            build(proj, "compose", tempo=900)
+        except ErroEdicao as e:
+            res["avisos"].append(f"sons não aplicados: {str(e)[-160:]}")
         versao = re.search(r"hyperframes@(\d+\.\d+\.\d+)", (proj / "package.json").read_text(encoding="utf-8"))
         npx = shutil.which("npx")
         if not (versao and npx):
             raise ErroEdicao("HyperFrames: Node.js (npx) ou versão fixada no package.json não encontrados")
         rodar([npx, "--yes", f"hyperframes@{versao.group(1)}", "render", "--quiet", "--quality", qualidade_hf,
-               "--output", hf, "."], proj, 3600)
+               "--resolution", "portrait", "--output", hf, "."], proj, 3600)
         tmp = rascunho.with_suffix(".tmp.mp4")
         falas = corrigir_palavras(_palavras(edit, "cut"), correcoes)
-        if titulo.strip() and titulo_dito(titulo, falas) is None:
-            res["titulo"] = {"aplicado": False, "motivo": f"“{titulo}” não é dito no vídeo: não entra na tela (regra)"}
-        plano_motion = planejar_motion(falas, _juncoes(edit), float(qualidade.medir(hf)["duracao_s"]), titulo)
-        res["motion"] = aplicar_motion(hf, tmp, plano_motion, pasta)
-        if not tmp.exists():
-            shutil.copy2(hf, tmp)
+        ocupado = [(0.0, TITULO_ATE)] if titulo.strip() else []
+        ocupado += [(a - 0.3, b + 0.3) for a, b in momentos]      # pílulas das imagens ficam no mesmo lugar
+        plano_motion = planejar_motion(falas, _juncoes(edit), float(qualidade.medir(hf)["duracao_s"]),
+                                       abertura=not titulo.strip(), ocupado=ocupado)
+        legenda = None
+        if teleprompter:
+            legenda = pasta / "legenda_teleprompter.ass"
+            n = legenda_teleprompter.gerar_ass(falas, legenda, plano["niche_profile"]["palette"]["accent_primary"],
+                                               float(qualidade.medir(hf)["duracao_s"]))
+            res["legenda"] = {"estilo": "teleprompter", "cartoes": n}
+        res["motion"] = aplicar_motion(hf, tmp, plano_motion, pasta,
+                                       nitidez=int(qualidade.medir(fonte)["largura"] or 0) < 1080, legenda=legenda)
         os.replace(tmp, rascunho)
         est.marcar("render", k)
     res["rascunho"] = str(rascunho)
@@ -382,6 +414,21 @@ def _texto(ws: List[Dict[str, Any]]) -> str:
     return t.upper()
 
 
+def validar_titulo(texto: str) -> None:
+    """Título = resumo curto e fiel do que é dito (ex.: "Você tem *medo* de perder o dente?"), com a palavra-chave
+    entre asteriscos (sai colorida na pílula). Nunca promessa, número ou dado que o vídeo não diz."""
+    limpo = texto.replace("*", "").strip()
+    if len(limpo) > TITULO_MAX:
+        raise ValueError(f"título com {len(limpo)} caracteres: resuma em até {TITULO_MAX} (cabe numa pílula)")
+    if texto.count("*") % 2:
+        raise ValueError("destaque do título: use *palavra* (asteriscos em par)")
+
+
+def pilula_titulo(texto: str, ate: float = TITULO_ATE) -> Dict[str, Any]:
+    """Pílula de título do editonny (animação `label` no topo), igual ao padrão aprovado pelo usuário."""
+    return {"type": "label", "id": "titulo", "at": 0.05, "exit": ate, "text": texto.strip(), "where": "top"}
+
+
 def corrigir_palavras(palavras: List[Dict[str, Any]], correcoes: Dict[str, str]) -> List[Dict[str, Any]]:
     """Mesma ideia das `corrections` do editonny: troca uma sequência falada (sem acento/pontuação) mantendo o tempo."""
     out = [dict(w) for w in palavras]
@@ -398,7 +445,8 @@ def corrigir_palavras(palavras: List[Dict[str, Any]], correcoes: Dict[str, str])
 
 
 def planejar_motion(palavras: List[Dict[str, Any]], juncoes: List[float], duracao: float,
-                    titulo: str = "") -> List[Dict[str, Any]]:
+                    titulo: str = "", abertura: bool = True,
+                    ocupado: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
     """Gráficos do EffectCraft SÓ com palavras ditas (nunca texto do agente), no padrão do motion já aprovado:
     abertura (título dado e dito, ou o começo da 1ª frase), pergunta curta falada, número falado (contador),
     fechamento (fim da última frase) e flash em cada emenda de corte. Mínimo de 1,8 s na tela, sem sobreposição."""
@@ -415,7 +463,9 @@ def planejar_motion(palavras: List[Dict[str, Any]], juncoes: List[float], duraca
 
     textos = []
     dito = titulo_dito(titulo, palavras) if titulo.strip() else None
-    if dito is not None:
+    if not abertura:
+        pass                                          # a pílula de título já abre o vídeo
+    elif dito is not None:
         n = len(_normal(titulo))
         i0 = next(i for i, w in enumerate(palavras) if float(w["start"]) == dito)
         textos.append(item("titulo", palavras[i0:i0 + n]))
@@ -445,23 +495,26 @@ def planejar_motion(palavras: List[Dict[str, Any]], juncoes: List[float], duraca
             fim = ultima[pos[-1] + 1:]
         textos.append(item("titulo", fim, extra=1.0))
     escolhidos, livre = [], -1.0
+    janelas = list(ocupado or [])
     for t in sorted(textos, key=lambda x: x["inicio"]):
-        if t["inicio"] >= livre and t["inicio"] + 0.5 < duracao:
+        bate = any(t["inicio"] < b and t["inicio"] + t["duracao"] > a for a, b in janelas)
+        if t["inicio"] >= livre and t["inicio"] + 0.5 < duracao and not bate:
             escolhidos.append(t)
             livre = t["inicio"] + t["duracao"] + 0.1
     return sorted(escolhidos + flashes, key=lambda x: x["inicio"])
 
 
-def aplicar_motion(video: Path, saida: Path, itens: List[Dict[str, Any]], pasta: Path) -> Dict[str, Any]:
-    """Renderiza cada gráfico no EffectCraft (cache por conteúdo) e sobrepõe todos numa passada só do FFmpeg."""
-    if not itens:
-        return {"aplicado": False, "motivo": "nada para animar"}
+def aplicar_motion(video: Path, saida: Path, itens: List[Dict[str, Any]], pasta: Path,
+                   nitidez: bool = False, legenda: Optional[Path] = None) -> Dict[str, Any]:
+    """Entrega: gráficos do EffectCraft (cache por conteúdo) + 1080x1920 em alta qualidade, numa compressão só.
+    Os arquivos intermediários ficam no tamanho de trabalho; só a entrega é convertida."""
     try:
         import ec_grafico as ec
+        tem_ec = os.path.isfile(ec.CLI)
     except ImportError:
-        return {"aplicado": False, "motivo": "effectcraft/ec_grafico.py ausente"}
-    if not os.path.isfile(ec.CLI):
-        return {"aplicado": False, "motivo": "EffectCraft não instalado"}
+        tem_ec = False
+    if not tem_ec:
+        itens = []
     (pasta / "motion").mkdir(exist_ok=True)
     entradas, filtros, rot = [], [], "0:v"
     for k, it in enumerate(itens):
@@ -473,19 +526,23 @@ def aplicar_motion(video: Path, saida: Path, itens: List[Dict[str, Any]], pasta:
         webm = pasta / "motion" / f"{Estado.chave(vars(a))}.webm"
         if not webm.exists():
             ec.gerar(a, str(webm))
-        entradas += ["-c:v", "libvpx-vp9", "-i", str(webm)]
+        entradas += ["-c:v", "libvpx-vp9", "-i", str(webm.resolve())]
         ini, fim = it["inicio"], it["inicio"] + it["duracao"]
         filtros.append(f"[{k + 1}:v]setpts=PTS-STARTPTS+{ini:.3f}/TB[g{k}]")
         filtros.append(f"[{rot}][g{k}]overlay=0:0:eof_action=pass:enable='between(t,{ini:.3f},{fim:.3f})'[v{k}]")
         rot = f"v{k}"
-    r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(video), *entradas, "-filter_complex", ";".join(filtros),
-                        "-map", f"[{rot}]", "-map", "0:a?", "-c:v", "libx264", "-crf", "18", "-preset", "medium",
-                        "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", str(saida)],
+    # legenda por cima de tudo (o .ass vai pelo nome, com o FFmpeg rodando na pasta dele: sem escapar caminho)
+    sub = f"subtitles={legenda.name}," if legenda else ""
+    filtros.append(f"[{rot}]{sub}{FILTRO_ENTREGA}{NITIDEZ if nitidez else ''}[saida]")
+    r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(Path(video).resolve()), *entradas,
+                        "-filter_complex", ";".join(filtros), "-map", "[saida]", "-map", "0:a?", *CODIFICACAO_ENTREGA,
+                        "-c:a", "copy", "-movflags", "+faststart", str(Path(saida).resolve())],
+                       cwd=str(legenda.parent if legenda else pasta),
                        capture_output=True, text=True, creationflags=SEM_JANELA)
     if r.returncode:
         saida.unlink(missing_ok=True)
-        return {"aplicado": False, "motivo": r.stderr.strip()[-400:]}
-    return {"aplicado": True, "itens": itens}
+        raise ErroEdicao(f"a entrega em 1080p falhou: {r.stderr.strip()[-400:]}")
+    return {"aplicado": bool(itens), "itens": itens, "entrega": "1080x1920", "nitidez": nitidez}
 
 
 def _juncoes(edit: Path) -> List[float]:
@@ -510,12 +567,17 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("video", type=Path)
     ap.add_argument("--niche", required=True)
-    ap.add_argument("--title", default="", help="gancho: só entra na tela se for dito no vídeo")
+    ap.add_argument("--title", default="", help='título-resumo do que é dito, com *palavra* destacada '
+                    '(ex.: "Você tem *medo* de perder o dente?"); entra na pílula de título do editonny')
+    ap.add_argument("--sem-teleprompter", action="store_true",
+                    help="usa a legenda do editonny em vez da teleprompter (caixa colorida na palavra falada)")
+    ap.add_argument("--rotulos", nargs="*", default=[], help="título da pílula de cada imagem, na ordem das --images")
     ap.add_argument("--tipo", choices=sorted(sme.REEL_TYPES), default=None)
     ap.add_argument("--images", nargs="*", default=[])
     ap.add_argument("--momentos", nargs="*", default=[], type=_momento, help="início-fim de cada imagem, em s do corte")
     ap.add_argument("--modelo", default="small", help="Whisper do editonny (small já fica em cache; large-v3-turbo é melhor)")
-    ap.add_argument("--qualidade", default="standard", choices=("draft", "standard", "high"))
+    ap.add_argument("--qualidade", default="looks", choices=("draft", "looks", "delivery"),
+                    help="render do HyperFrames: looks = CRF 16 (padrão, igual ao aprovado)")
     ap.add_argument("--ate", default="render", choices=ETAPAS[1:])
     ap.add_argument("--refazer", action="store_true")
     ap.add_argument("--sem-ocr", action="store_true", help="pula o quality_gate (OCR) do editonny")
@@ -524,7 +586,8 @@ def main() -> int:
     a = ap.parse_args()
     try:
         res = editar(a.video.resolve(), a.niche, a.title, a.tipo, a.images, a.momentos, a.modelo, a.qualidade,
-                     a.ate, a.refazer, not a.sem_ocr, dict(c.split("=", 1) for c in a.corrigir if "=" in c))
+                     a.ate, a.refazer, not a.sem_ocr, dict(c.split("=", 1) for c in a.corrigir if "=" in c), a.rotulos,
+                     not a.sem_teleprompter)
     except (ErroEdicao, ValueError, FileNotFoundError, sme.PresetInvalido) as e:
         print(f"erro: {e}", file=sys.stderr)
         return 1

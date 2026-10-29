@@ -160,3 +160,42 @@ def test_quebra_de_linha_nao_deixa_ligacao_no_fim():
     import ec_grafico as ec
     assert ec.quebrar("AINDA TEMOS O QUE PRESERVAR") == "AINDA TEMOS\rO QUE PRESERVAR"
     assert ec.quebrar("CURTO") == "CURTO"
+
+
+# ---------------------------------------------------------------- padrão aprovado (29/10/2026)
+def test_titulo_resumo_valida_tamanho_e_destaque():
+    er.validar_titulo("Você tem *medo* de perder o dente?")
+    with pytest.raises(ValueError, match="resuma"):
+        er.validar_titulo("x" * 60)
+    with pytest.raises(ValueError, match="asteriscos"):
+        er.validar_titulo("Você tem *medo de perder")
+    p = er.pilula_titulo("Você tem *medo* de perder o dente?")
+    assert p["type"] == "label" and p["where"] == "top" and p["at"] < 0.1 and p["exit"] == er.TITULO_ATE
+
+
+def test_motion_nao_colide_com_pilulas():
+    itens = er.planejar_motion(ROTEIRO, [], 40.0, abertura=False, ocupado=[(0.0, 4.1), (6.0, 9.0)])
+    for it in (i for i in itens if i["receita"] != "flash"):
+        assert not any(it["inicio"] < b and it["inicio"] + it["duracao"] > a for a, b in [(0.0, 4.1), (6.0, 9.0)])
+    assert all(i.get("texto") != "VOCÊ TEM UMA LOJA" for i in itens)       # a pílula abre o vídeo
+
+
+def test_entrega_sempre_1080p_alta_qualidade():
+    assert "scale=1080:1920" in er.FILTRO_ENTREGA
+    crf = er.CODIFICACAO_ENTREGA[er.CODIFICACAO_ENTREGA.index("-crf") + 1]
+    assert int(crf) <= 17 and "slow" in er.CODIFICACAO_ENTREGA
+
+
+def test_teleprompter_caixa_atras_de_cada_palavra(tmp_path):
+    import legenda_teleprompter as lt
+    if not lt.FONTE_ARQ.is_file():
+        pytest.skip("fonte da legenda ausente")
+    ws = _falas("Você tem um dente que sabe. O que fazer?")
+    n = lt.gerar_ass(ws, tmp_path / "l.ass", "#6B4C9A", 20.0)
+    ass = (tmp_path / "l.ass").read_text(encoding="utf-8")
+    caixas = [l for l in ass.splitlines() if l.startswith("Dialogue: 0,")]
+    assert n >= 3 and len(caixas) == len(ws)                               # uma caixa por palavra dita
+    assert "&H009A4C6B" in ass                                               # cor do nicho em BGR do ASS
+    cards = lt.cartoes(ws)
+    assert all(len(c) <= 3 for c in cards)
+    assert all(er._sem(c[-1]["text"]) not in lt.LIGACAO for c in cards if len(c) > 1)

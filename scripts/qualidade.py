@@ -22,7 +22,8 @@ FPS_ACEITOS = (30.0, 60.0)
 LUFS_ALVO, LUFS_TOLERANCIA = -14.0, 0.5
 TRUE_PEAK_MAX = -1.5
 DESVIO_AV_AVISO, DESVIO_AV_ERRO = 0.10, 0.50      # s entre o fim do vídeo e o fim do áudio
-PRETO_INICIAL_MAX = 0.10                           # s de tela preta no começo (hook: proibido fade-in preto)
+PRETO_INICIAL_MAX = 0.10
+BITRATE_MIN_KBPS = 5000                            # 1080x1920 abaixo disso perde definição visível (o aprovado: ~8 Mbps)                           # s de tela preta no começo (hook: proibido fade-in preto)
 PREFIXOS = ("RASCUNHO_", "FINAL_")
 
 
@@ -37,7 +38,7 @@ def _fps(txt: str) -> float:
 
 def medir(video: Path) -> Dict[str, Any]:
     r = _rodar(["ffprobe", "-v", "error", "-show_entries",
-                "format=duration:stream=codec_type,codec_name,width,height,r_frame_rate,pix_fmt,duration",
+                "format=duration:stream=codec_type,codec_name,width,height,r_frame_rate,pix_fmt,duration,bit_rate",
                 "-of", "json", str(video)])
     if r.returncode:
         raise ValueError(f"ffprobe não leu o arquivo: {r.stderr.strip()[-300:]}")
@@ -49,6 +50,7 @@ def medir(video: Path) -> Dict[str, Any]:
         "duracao_s": round(float(info.get("format", {}).get("duration") or 0), 3),
         "largura": v.get("width"), "altura": v.get("height"), "fps": _fps(v.get("r_frame_rate")),
         "codec_video": v.get("codec_name"), "pix_fmt": v.get("pix_fmt"),
+        "bitrate_video_kbps": round(int(v.get("bit_rate") or 0) / 1000),
         "duracao_video_s": round(float(v.get("duration") or 0), 3),
         "tem_audio": a is not None, "codec_audio": a.get("codec_name") if a else None,
         "duracao_audio_s": round(float(a.get("duration") or 0), 3) if a else None,
@@ -84,6 +86,9 @@ def verificar(video: Path) -> Dict[str, Any]:
         item("aviso", "fps", f"{m['fps']} fps (PLAYBOOK: 30 ou 60)")
     if m["codec_video"] not in ("h264", "hevc"):
         item("aviso", "codec_video", f"{m['codec_video']} (use H.264 para o Instagram aceitar sem reprocessar)")
+    if m["bitrate_video_kbps"] and m["bitrate_video_kbps"] < BITRATE_MIN_KBPS:
+        item("erro", "definicao", f"{m['bitrate_video_kbps']} kbps de vídeo (mínimo {BITRATE_MIN_KBPS}): a entrega perde "
+             "definição; refaça a compressão final em alta qualidade")
     if m["pix_fmt"] != "yuv420p":
         item("aviso", "pix_fmt", f"{m['pix_fmt']} (yuv420p é o que todo celular reproduz)")
     if m["duracao_s"] <= 0:

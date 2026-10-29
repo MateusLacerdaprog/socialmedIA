@@ -22,8 +22,9 @@ Fora do escopo: publicar, curtir, comentar ou seguir no Instagram; escrever text
 | Vídeo (`.mp4`) | sim | caminho no chat ou o mais recente de `entrada_mp4/` |
 | Nicho | sim | `varejo`, `saude`, `industria`, `material_construcao`, `gastronomia`, `servicos`, `educacao`, `ecommerce`, `empresas_locais` (apelidos: `supermercado`, `clinica`, `odontologia`, `restaurante`, `escritorio`…) |
 | Tipo de Reel | não | `montagem_criador`, `fala_continua`, `produto_sem_fala`, `personagem_ia`; sem ele vale o padrão do nicho |
-| Textos (gancho, títulos, CTA, hashtags) | sim, do cliente | ou palavras ditas na gravação; nunca do agente |
-| Imagens do vídeo | não | só as enviadas para ESTE vídeo (máx. 2 momentos, salvo pedido) |
+| Título do vídeo | sim | **resumo curto e fiel do que é dito** (o agente propõe a partir da transcrição; o usuário aprova no RASCUNHO), ex.: "Você tem *medo* de perder o dente?" |
+| CTA, hashtags, legenda do post | sim, do cliente | nunca inventados pelo agente |
+| Imagens do vídeo | **sim, 1–2** | as enviadas para ESTE vídeo; sem elas, peça (o padrão aprovado sempre tem imagem em card) |
 | Tipo de conta | para memes | `empresa` ou `pessoal_sem_receita` |
 
 ## 3. Pré-requisitos
@@ -41,7 +42,7 @@ continue nas etapas que não dependem dele.
 
 | Comando | Faz |
 |---|---|
-| **`python <SOCIALMEDIA>/scripts/editar_reel.py VIDEO --niche N --title "frase dita" [--tipo X] [--images A B --momentos 4.5-8 20-24]`** | **caminho principal:** vídeo bruto → transcrição → corte pelo tipo de Reel → projeto do editonny com o plano → render HyperFrames → título EffectCraft (só se dito) → `RASCUNHO_<video>.mp4` + portões. Etapas com cache (`--ate`, `--refazer`); `--modelo large-v3-turbo` transcreve melhor (download de 1,6 GB na 1ª vez) |
+| **`python <SOCIALMEDIA>/scripts/editar_reel.py VIDEO --niche N --title "Resumo com *destaque*?" --images A.jpg --momentos 24.2-29.3 --rotulos "Título da *imagem*" [--corrigir "errado=certo"]`** | **caminho principal:** vídeo bruto → transcrição → corte pelo tipo de Reel → projeto do editonny (pílula de título, imagens em card com título, transições, sons) → render HyperFrames → motion do EffectCraft + legenda teleprompter → **entrega 1080×1920 em alta qualidade** → `RASCUNHO_<video>.mp4` + portões. Etapas com cache (`--ate`, `--refazer`); `--modelo large-v3-turbo` transcreve melhor (download de 1,6 GB na 1ª vez) |
 | `python <SOCIALMEDIA>/scripts/receber_mp4.py [VIDEO] --niche N --title T --images A B` | só a 1ª etapa: cria `projetos/socialmedia_<video>/` com `imagens/` isolado + `socialmedia_plan.json` |
 | `python <SOCIALMEDIA>/scripts/socialmedia_engine.py plan --niche N --title T [--tipo X]` | plano: `project.json` do editonny, legenda medida (`legenda_empresa`), gancho, áudio |
 | `… socialmedia_engine.py caption --niche N --hook H --bullets … [--keyword K --hashtags …]` | monta e valida a legenda do post (sai 1 se inválida) |
@@ -64,6 +65,24 @@ Conhecimento por assunto (leia só o módulo da etapa): [01 hooks](modules/01-ho
 [08 memes](modules/08-memes-cortados-e-insercao.md) · material de apoio local (de terceiros) em `terceiros/`, se existir.
 
 ## 5. Procedimento
+
+### Padrão aprovado pelo usuário (29/10/2026) — não regredir
+
+Referência: o Reel de clínica aprovado pelo usuário (projeto local, fora do Git). Toda edição sai com:
+1. **Pílula de título** no topo (`label` do editonny, `where: top`, 0,05–4,1 s): resumo curto do assunto com a
+   palavra-chave entre asteriscos (sai colorida). Ex.: "Você tem *medo* de perder o
+   dente?". Fiel ao que é dito; nunca promessa, número ou dado que o vídeo não diz.
+2. **Imagens em card** (1–2, `--images/--momentos/--rotulos`): cada uma com a sua pílula de título, transição de
+   entrada/saída, zoom e som. Momento = quando a fala explica o que a imagem mostra.
+3. **Legenda teleprompter:** cartões de até 3 palavras, maiúsculas, com uma **caixa na cor de destaque do nicho atrás
+   da palavra que está sendo dita** (`scripts/legenda_teleprompter.py`).
+4. **Motion do EffectCraft** só onde não colide com as pílulas (pergunta falada, fechamento, flash na emenda).
+5. **Qualidade:** render do HyperFrames em `looks` (CRF 16) e uma única compressão final em 1080×1920 (CRF 16, `slow`;
+   nitidez leve se a gravação for menor que 1080). Intermediários ficam no tamanho de trabalho. O `verificar` reprova
+   abaixo de 5 Mbps.
+
+Erros que já aconteceram e não podem voltar: título literal tirado da fala em vez de resumo; título sem pílula; vídeo
+sem as imagens do cliente; `--quality standard` + recompressão média (saiu com 3,8 Mbps, borrado).
 
 **Atalho:** os passos 2 a 5 rodam juntos com `editar_reel.py` (as regras abaixo já estão dentro dele). Use os passos
 manuais só para ajustar um ponto (uma emenda, uma cena) e rode o `editar_reel.py` de novo: ele refaz só o que mudou.
@@ -96,10 +115,9 @@ Cubra 1 a 2 emendas com as imagens para restarem 3 a 4 cortes secos visíveis.
   `build.py`: sem `at` o build falha). As cenas de transição entram pelo `editonny scene --use transition-zoom|transition-glow
 --start --end` (o arquivo da cena precisa existir no projeto), e os sons pelo `sound_plan.py` (`whoosh`, `photo`, `pop`).
 Nunca imagem estática em corte seco.
-- **Zonas seguras:** gancho em `y = 230–260` por `3–8 s` (editonny ou `ec_grafico.py titulo`); `counter` em
-  `[330, 1170]`, `stamp` em `[230, 1150]`; legenda do editonny `standard`, `maxWords 3`, `y = 1380–1400`
-  (`1290` durante `evidence`); legenda ASS própria de empresa: campo `legenda_empresa` do plano (44 px, caixa normal,
-  `y = 1360`, no máximo 1 palavra de destaque por frase). Nada abaixo de `y = 1530`; ícones em `x = 920–1080`.
+- **Zonas seguras:** pílula de título no topo (editonny `label` `where: top`) por `~4 s`; `counter` em
+  `[330, 1170]`, `stamp` em `[230, 1150]`; legenda teleprompter centrada em `y = 1400` (letra ~60 px, contorno 6 px,
+  caixa na `accent_primary` do nicho). Nada abaixo de `y = 1530`; ícones em `x = 920–1080`.
 - **Encerramento:** anúncio de marca = cartão de `0,8–1,2 s` com logo + 1 CTA; criador/série = termina na última fala;
   saúde = responsável técnico + CRO/CRM na tela.
 - **Memes:** só pelo comando `meme`. Conta de empresa nunca usa o clipe (recebe a reação encenada); saúde nunca usa meme.
@@ -126,8 +144,9 @@ confirme a palavra-código e as hashtags com o cliente.
 ## 7. Regras de segurança
 
 1. **RASCUNHO antes do FINAL:** nada sai como `FINAL_` sem o usuário assistir e aprovar.
-2. **Sem invenção:** títulos, contadores, selos e legendas só com palavras faladas (confirmadas na transcrição) ou
-   dados do cliente. Nunca invente preço, depoimento, estatística ou promessa clínica.
+2. **Sem invenção:** legendas, contadores e selos só com palavras faladas ou dados do cliente. O **título** é um
+   resumo curto e fiel do que é dito (o usuário aprova no RASCUNHO). Nunca invente preço, depoimento, estatística
+   ou promessa clínica.
 3. **Instagram só leitura** no navegador: nunca publicar, curtir, comentar ou seguir.
 4. **Imagens isoladas por vídeo:** nunca reutilizar imagem de projeto anterior (`audit-project` compara SHA-256).
    Imagens trocadas vão para `_removidas/`, nunca são apagadas.
@@ -141,7 +160,8 @@ confirme a palavra-código e as hashtags com o cliente.
 ## 8. Validação dos resultados (pronto = tudo verde)
 
 - `audit-project` com `passed_all: true`;
-- `verificar` com `valido: true` no `RASCUNHO_*.mp4`;
+- `verificar` com `valido: true` no `RASCUNHO_*.mp4` (1080×1920, ≥ 5 Mbps, −14 LUFS);
+- padrão aprovado presente: pílula de título, imagem(ns) em card, legenda teleprompter;
 - quadros revisados a olho (texto, zonas seguras, transições);
 - `caption` com `valid: true` e padrões confirmados com o cliente.
 
