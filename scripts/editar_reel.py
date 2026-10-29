@@ -48,8 +48,13 @@ TITULO_ATE = 4.1                          # a pílula de título fica 0,05–4,1
 TITULO_MAX = 45                           # caracteres: resumo curto, cabe numa pílula
 FILTRO_ENTREGA = "scale=1080:1920:flags=lanczos,setsar=1,format=yuv420p"
 NITIDEZ = ",unsharp=5:5:0.35:3:3:0"        # só quando a gravação é menor que 1080 de largura
-CODIFICACAO_ENTREGA = ["-c:v", "libx264", "-crf", "16", "-preset", "slow", "-profile:v", "high",
-                       "-maxrate", "16M", "-bufsize", "32M", "-r", "30"]
+# gravação pequena (ex.: vídeo que passou pelo WhatsApp): tira blocos e ruído e amplia ANTES do corte, uma vez
+RESTAURAR_ABAIXO = 1080
+FILTRO_RESTAURO = ("deblock=filter=strong:block=8,hqdn3d=1.5:1.5:3:3,scale=1080:-2:flags=lanczos,"
+                   "unsharp=5:5:0.6:5:5:0,format=yuv420p")
+# taxa garantida (10 Mbps, mínimo 6): imagem limpa/restaurada não pode sair "econômica" e cheia de blocos
+CODIFICACAO_ENTREGA = ["-c:v", "libx264", "-b:v", "10M", "-minrate", "6M", "-maxrate", "16M", "-bufsize", "20M",
+                       "-preset", "slow", "-profile:v", "high", "-r", "30"]
 
 
 class ErroEdicao(RuntimeError):
@@ -263,13 +268,18 @@ def editar(video: Path, niche: str, titulo: str, tipo: Optional[str] = None, ima
         est.marcar("transcrever", k)
     palavras = _palavras(edit, fonte.stem)
     res["etapas"]["transcrever"] = {"palavras": len(palavras)}
+    largura = int(qualidade.medir(fonte)["largura"] or 0)
+    imagem = fonte                                       # vídeo que vai para o corte (a transcrição é a mesma)
+    if 0 < largura < RESTAURAR_ABAIXO:
+        imagem = restaurar(fonte, edit / "fontes" / f"{fonte.stem}_restaurado.mp4")
+        res["etapas"]["restauro"] = {"de": largura, "para": 1080, "filtro": FILTRO_RESTAURO}
     if ate == "transcrever":
         return res
 
     # 3. cortar
     dur = float(qualidade.medir(fonte)["duracao_s"])
-    edl = montar_edl(palavras, tipo, str(fonte), dur)
-    k = Estado.chave(k, edl)
+    edl = montar_edl(palavras, tipo, str(imagem), dur)
+    k = Estado.chave(k, edl, FILTRO_RESTAURO if imagem != fonte else "")
     cut = edit / "cut.mp4"
     if not est.feito("cortar", k, cut, edit / "transcripts" / "cut.json"):
         log(f"cortando ({len(edl['ranges'])} trecho(s), {tipo})…")
@@ -322,7 +332,7 @@ def editar(video: Path, niche: str, titulo: str, tipo: Optional[str] = None, ima
     # 5. render + título do EffectCraft (só se foi dito)
     rascunho = pasta / f"RASCUNHO_{video.stem}.mp4"
     hf = proj / "renders" / "rascunho.mp4"
-    k = Estado.chave(k, qualidade_hf, titulo, correcoes, teleprompter, "entrega-3")
+    k = Estado.chave(k, qualidade_hf, titulo, correcoes, teleprompter, "entrega-5")
     if not est.feito("render", k, rascunho):
         log("compondo e renderizando (HyperFrames)…")
         build(proj, "prepare", tempo=600)
@@ -337,7 +347,7 @@ def editar(video: Path, niche: str, titulo: str, tipo: Optional[str] = None, ima
         if not (versao and npx):
             raise ErroEdicao("HyperFrames: Node.js (npx) ou versão fixada no package.json não encontrados")
         rodar([npx, "--yes", f"hyperframes@{versao.group(1)}", "render", "--quiet", "--quality", qualidade_hf,
-               "--resolution", "portrait", "--output", hf, "."], proj, 3600)
+               "--resolution", "portrait", "--video-frame-format", "png", "--output", hf, "."], proj, 3600)
         tmp = rascunho.with_suffix(".tmp.mp4")
         falas = corrigir_palavras(_palavras(edit, "cut"), correcoes)
         ocupado = [(0.0, TITULO_ATE)] if titulo.strip() else []
@@ -351,7 +361,7 @@ def editar(video: Path, niche: str, titulo: str, tipo: Optional[str] = None, ima
                                                float(qualidade.medir(hf)["duracao_s"]))
             res["legenda"] = {"estilo": "teleprompter", "cartoes": n}
         res["motion"] = aplicar_motion(hf, tmp, plano_motion, pasta,
-                                       nitidez=int(qualidade.medir(fonte)["largura"] or 0) < 1080, legenda=legenda)
+                                       nitidez=False, legenda=legenda)   # a nitidez já veio no restauro
         os.replace(tmp, rascunho)
         est.marcar("render", k)
     res["rascunho"] = str(rascunho)
@@ -359,7 +369,7 @@ def editar(video: Path, niche: str, titulo: str, tipo: Optional[str] = None, ima
     # 6. portões do arquivo final
     ver = qualidade.verificar(rascunho)
     regras_erro = {i["regra"] for i in ver["itens"] if i["nivel"] == "erro"}
-    if regras_erro and regras_erro <= {"loudness", "true_peak"}:
+    if regras_erro & {"loudness", "true_peak"}:
         log("loudness fora do alvo: 2ª passada do loudnorm…")
         qualidade.corrigir_loudness(rascunho)
         ver = qualidade.verificar(rascunho)
@@ -412,6 +422,25 @@ def _texto(ws: List[Dict[str, Any]]) -> str:
     while t and t[-1] in ".,;:":
         t = t[:-1]
     return t.upper()
+
+
+def restaurar(origem: Path, destino: Path) -> Path:
+    """Versão de trabalho em 1080 de largura, sem blocos de compressão (cache: só refaz se a origem mudar)."""
+    marca = destino.with_suffix(".json")
+    assinatura = json.dumps([_assinatura(origem), FILTRO_RESTAURO])
+    if destino.exists() and marca.exists() and marca.read_text(encoding="utf-8") == assinatura:
+        return destino
+    log("restaurando a gravação (deblock + lanczos 1080 + nitidez)…")
+    tmp = destino.with_suffix(".tmp.mp4")
+    r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(origem), "-vf", FILTRO_RESTAURO, "-c:v", "libx264",
+                        "-crf", "12", "-preset", "fast", "-c:a", "copy", str(tmp)],
+                       capture_output=True, text=True, creationflags=SEM_JANELA)
+    if r.returncode:
+        tmp.unlink(missing_ok=True)
+        raise ErroEdicao(f"restauro da gravação falhou: {r.stderr.strip()[-300:]}")
+    os.replace(tmp, destino)
+    marca.write_text(assinatura, encoding="utf-8")
+    return destino
 
 
 def validar_titulo(texto: str) -> None:

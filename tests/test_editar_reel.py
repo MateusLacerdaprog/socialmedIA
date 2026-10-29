@@ -182,8 +182,9 @@ def test_motion_nao_colide_com_pilulas():
 
 def test_entrega_sempre_1080p_alta_qualidade():
     assert "scale=1080:1920" in er.FILTRO_ENTREGA
-    crf = er.CODIFICACAO_ENTREGA[er.CODIFICACAO_ENTREGA.index("-crf") + 1]
-    assert int(crf) <= 17 and "slow" in er.CODIFICACAO_ENTREGA
+    c = er.CODIFICACAO_ENTREGA
+    assert int(c[c.index("-b:v") + 1].rstrip("M")) >= 8 and int(c[c.index("-minrate") + 1].rstrip("M")) >= 5
+    assert "slow" in c
 
 
 def test_teleprompter_caixa_atras_de_cada_palavra(tmp_path):
